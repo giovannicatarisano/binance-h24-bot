@@ -47,6 +47,8 @@ class ConfigRequest(BaseModel):
     grid_upper: Optional[float] = 70000.0
     grid_levels: Optional[int] = 5
 
+import requests
+
 @app.get("/")
 def home():
     return {
@@ -54,6 +56,16 @@ def home():
         "status": "online",
         "bot_active": bot.is_running
     }
+
+@app.get("/api/my-ip")
+def get_my_ip():
+    try:
+        res = requests.get("https://api.ipify.org?format=json", timeout=5)
+        ip = res.json().get("ip", "unknown")
+        return {"outbound_ip": ip, "binance_instruction": "Copia questo IP e incollalo nelle restrizioni IP di Binance"}
+    except Exception as e:
+        return {"error": str(e)}
+
 
 @app.get("/api/status", dependencies=[Depends(verify_token)])
 def get_status():
