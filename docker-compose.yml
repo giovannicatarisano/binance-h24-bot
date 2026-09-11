@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  binance-bot:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVER_SECRET_KEY=binance_secret_token_1234
+      - BINANCE_API_KEY=
+      - BINANCE_SECRET_KEY=
+      - BINANCE_TESTNET=false
