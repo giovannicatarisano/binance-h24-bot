@@ -31,8 +31,15 @@ class UniversalTradingBot:
         self.last_price = 0.0
         self.last_buy_price: Optional[float] = None
         self.accumulated_base = 0.0
-        self.total_spent_usdt = 0.0
         self.trade_history: List[Dict[str, Any]] = []
+        self.system_logs: List[str] = []
+
+    def _log(self, msg: str):
+        logger.info(msg)
+        ts = time.strftime("%H:%M:%S")
+        self.system_logs.insert(0, f"[{ts}] {msg}")
+        if len(self.system_logs) > 50:
+            self.system_logs.pop()
 
     def configure(self, api_key: str, secret_key: str, is_testnet: bool = True):
         self.is_testnet = is_testnet
@@ -132,10 +139,12 @@ class UniversalTradingBot:
             return []
 
     def _run_loop(self):
+        self._log(f"Loop di trading avviato per {self.symbol}...")
         while self.is_running:
             try:
                 ticker = self.exchange.fetch_ticker(self.symbol)
                 self.last_price = float(ticker['last'])
+                self._log(f"Ticker {self.symbol}: {self.last_price}")
 
                 if self.strategy == "dca":
                     self._evaluate_dca(self.last_price)
@@ -143,7 +152,7 @@ class UniversalTradingBot:
                     self._evaluate_grid(self.last_price)
 
             except Exception as e:
-                logger.error(f"Errore ciclo trading: {e}")
+                self._log(f"Errore ciclo trading: {e}")
 
             time.sleep(self.check_interval_sec)
 

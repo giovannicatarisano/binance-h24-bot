@@ -78,6 +78,10 @@ def get_balances():
 def get_history():
     return bot.trade_history
 
+@app.get("/api/logs", dependencies=[Depends(verify_token)])
+def get_logs():
+    return {"logs": bot.system_logs}
+
 @app.post("/api/configure", dependencies=[Depends(verify_token)])
 def configure_bot(req: ConfigRequest):
     if req.api_key and req.secret_key:
