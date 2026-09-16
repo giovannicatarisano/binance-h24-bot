@@ -181,6 +181,7 @@ class UniversalTradingBot:
             self._log(f"Mercati BTC trovati: {btc_markets[:5]}")
             symbol_to_use = btc_markets[0] if btc_markets else list(self.exchange.markets.keys())[0]
 
+        self.active_symbol = symbol_to_use
         self._log(f"Loop di trading avviato per {symbol_to_use}...")
         while self.is_running:
             try:
@@ -255,12 +256,13 @@ class UniversalTradingBot:
                 self.total_spent_usdt += self.amount_usdt
 
     def _execute_order(self, side: str, amount: float, price: float, note: str):
+        target_sym = getattr(self, 'active_symbol', self.symbol)
         try:
-            logger.info(f"Esecuzione ordine {side.upper()} di {amount:.6f} {self.symbol} @ ~{price}")
-            order = self.exchange.create_market_order(self.symbol, side, amount)
+            self._log(f"Esecuzione ordine {side.upper()} di {amount:.6f} {target_sym} @ ~${price}")
+            order = self.exchange.create_market_order(target_sym, side, amount)
             log_item = {
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "symbol": self.symbol,
+                "symbol": target_sym,
                 "side": side.upper(),
                 "price": price,
                 "amount": amount,
@@ -269,7 +271,8 @@ class UniversalTradingBot:
                 "order_id": order.get('id', 'N/A')
             }
             self.trade_history.insert(0, log_item)
+            self._log(f"Ordine {side.upper()} eseguito con successo! ID: {order.get('id', 'N/A')}")
             if len(self.trade_history) > 100:
                 self.trade_history.pop()
         except Exception as e:
-            logger.error(f"Fallimento ordine {side.upper()}: {e}")
+            self._log(f"Fallimento ordine {side.upper()}: {e}")
