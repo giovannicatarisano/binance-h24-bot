@@ -19,13 +19,39 @@ app.add_middleware(
 SERVER_API_KEY = os.getenv("SERVER_SECRET_KEY", "binance_secret_token_1234")
 bot = UniversalTradingBot()
 
-# Caricamento iniziale se fornite via env
-INITIAL_KEY = os.getenv("BYBIT_API_KEY") or os.getenv("BINANCE_API_KEY")
-INITIAL_SECRET = os.getenv("BYBIT_SECRET_KEY") or os.getenv("BINANCE_SECRET_KEY")
-IS_TESTNET = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
+CONFIG_FILE = "bot_saved_state.json"
+import json
 
-if INITIAL_KEY and INITIAL_SECRET:
-    bot.configure(INITIAL_KEY, INITIAL_SECRET, is_testnet=IS_TESTNET)
+def load_saved_config():
+    # 1. Controlla file di stato salvato
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                data = json.load(f)
+                if data.get("api_key") and data.get("secret_key"):
+                    bot.configure(data["api_key"], data["secret_key"], is_testnet=data.get("is_testnet", True))
+                    bot.update_params(data)
+                    bot.start()
+                    return
+        except Exception as e:
+            print("Errore caricamento stato:", e)
+
+    # 2. Fallback da env o credenziali fornite
+    initial_key = os.getenv("BYBIT_API_KEY") or "2Zmj37uQYcUK8m7Gf4"
+    initial_secret = os.getenv("BYBIT_SECRET_KEY") or "dshsZak0DaNhghLJ9DpaG4141hkccOL7rrNv"
+    is_testnet = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
+    if initial_key and initial_secret:
+        bot.configure(initial_key, initial_secret, is_testnet=is_testnet)
+        bot.start()
+
+load_saved_config()
+
+def save_config(data: dict):
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print("Errore salvataggio config:", e)
 
 def verify_token(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -93,6 +119,12 @@ def configure_bot(req: ConfigRequest):
         bot.configure(req.api_key, req.secret_key, is_testnet=bool(req.is_testnet))
     
     bot.update_params(req.model_dump(exclude_unset=True))
+    save_config(req.model_dump(exclude_unset=True))
+    if not bot.is_running:
+        try:
+            bot.start()
+        except Exception:
+            pass
     return {"status": "ok", "config": bot.get_status()}
 
 @app.post("/api/start", dependencies=[Depends(verify_token)])

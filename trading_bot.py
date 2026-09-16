@@ -226,9 +226,16 @@ class UniversalTradingBot:
 
         if should_buy:
             qty = self.amount_usdt / price
-            self._execute_order("buy", qty, price, reason)
+            # Arrotonda la quantità alla precisione corretta
+            target_sym = getattr(self, 'active_symbol', self.symbol)
+            market = self.exchange.markets.get(target_sym, {})
+            min_amount = market.get('limits', {}).get('amount', {}).get('min', 0.0001)
+            if qty < min_amount:
+                qty = min_amount
+            qty_formatted = float(self.exchange.amount_to_precision(target_sym, qty))
+            self._execute_order("buy", qty_formatted, price, reason)
             self.last_buy_price = price
-            self.accumulated_base += qty
+            self.accumulated_base += qty_formatted
             self.total_spent_usdt += self.amount_usdt
 
     def _evaluate_grid(self, price: float):
