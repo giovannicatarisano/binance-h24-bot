@@ -168,13 +168,18 @@ class UniversalTradingBot:
         except Exception as e:
             self._log(f"Avviso load_markets: {e}")
 
-        # Verifica formato simbolo corretto
-        symbol_to_use = self.symbol
-        if symbol_to_use not in self.exchange.markets:
-            if symbol_to_use.replace('/', '') in self.exchange.markets:
-                symbol_to_use = symbol_to_use.replace('/', '')
-            elif f"{symbol_to_use}:USDT" in self.exchange.markets:
-                symbol_to_use = f"{symbol_to_use}:USDT"
+        # Trova il simbolo corrispondente esatto nei mercati Bybit EU
+        symbol_to_use = None
+        for candidate in [self.symbol, self.symbol.replace('/', ''), f"{self.symbol}:USDT", "BTC/USDT:USDT", "BTC/EUR", "BTC/USDC"]:
+            if candidate in self.exchange.markets:
+                symbol_to_use = candidate
+                break
+
+        if not symbol_to_use:
+            # Prendi la prima coppia BTC disponibile
+            btc_markets = [m for m in self.exchange.markets.keys() if 'BTC' in m]
+            self._log(f"Mercati BTC trovati: {btc_markets[:5]}")
+            symbol_to_use = btc_markets[0] if btc_markets else list(self.exchange.markets.keys())[0]
 
         self._log(f"Loop di trading avviato per {symbol_to_use}...")
         while self.is_running:
