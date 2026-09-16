@@ -68,7 +68,12 @@ def get_my_ip():
 
 @app.get("/api/status", dependencies=[Depends(verify_token)])
 def get_status():
-    return bot.get_status()
+    try:
+        return bot.get_status()
+    except Exception as e:
+        import traceback
+        trace = traceback.format_exc()
+        return {"error": str(e), "trace": trace, "is_running": bot.is_running}
 
 @app.get("/api/balances", dependencies=[Depends(verify_token)])
 def get_balances():
