@@ -5,13 +5,13 @@ from typing import Optional, Dict, Any, List
 import ccxt
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("TradingBot")
+logger = logging.getLogger("BybitTradingBot")
 
-class BinanceTradingBot:
+class UniversalTradingBot:
     def __init__(self):
         self.is_running = False
         self.thread: Optional[threading.Thread] = None
-        self.exchange: Optional[ccxt.binance] = None
+        self.exchange: Optional[ccxt.bybit] = None
         
         # Parametri di configurazione
         self.symbol = "BTC/USDT"
@@ -20,7 +20,7 @@ class BinanceTradingBot:
         self.take_profit_pct = 2.0
         self.dip_buy_pct = 1.5
         self.check_interval_sec = 10
-        self.is_testnet = False
+        self.is_testnet = True  # Default su Demo/Testnet per sicurezza
 
         # Parametri Grid
         self.grid_lower = 50000.0
@@ -34,26 +34,34 @@ class BinanceTradingBot:
         self.total_spent_usdt = 0.0
         self.trade_history: List[Dict[str, Any]] = []
 
-    def configure(self, api_key: str, secret_key: str, is_testnet: bool = False):
+    def configure(self, api_key: str, secret_key: str, is_testnet: bool = True):
         self.is_testnet = is_testnet
-        self.exchange = ccxt.binance({
-            'apiKey': api_key,
-            'secret': secret_key,
+        
+        # Inizializzazione Bybit con supporto Demo (Testnet) e Reale (Mainnet)
+        exchange_config = {
+            'apiKey': api_key.strip(),
+            'secret': secret_key.strip(),
             'enableRateLimit': True,
             'options': {
                 'defaultType': 'spot',
                 'adjustForTimeDifference': True,
             }
-        })
+        }
+        
+        self.exchange = ccxt.bybit(exchange_config)
         if is_testnet:
             self.exchange.set_sandbox_mode(True)
-        logger.info(f"Exchange configurato con successo (Testnet: {is_testnet})")
+            
+        logger.info(f"Exchange Bybit configurato (Demo/Testnet: {is_testnet})")
 
     def update_params(self, params: Dict[str, Any]):
         if 'symbol' in params:
-            self.symbol = params['symbol'].replace('/', '').upper()
-            if not '/' in self.symbol and 'USDT' in self.symbol:
-                self.symbol = self.symbol.replace('USDT', '/USDT')
+            raw_sym = params['symbol'].replace('/', '').upper()
+            if not '/' in params['symbol'] and 'USDT' in raw_sym:
+                self.symbol = raw_sym.replace('USDT', '/USDT')
+            else:
+                self.symbol = params['symbol'].upper()
+                
         if 'strategy' in params:
             self.strategy = params['strategy']
         if 'amount_usdt' in params:
@@ -73,21 +81,22 @@ class BinanceTradingBot:
         if self.is_running:
             return
         if not self.exchange:
-            raise ValueError("API Keys non configurate.")
+            raise ValueError("Chiavi API non configurate. Configura prima le credenziali.")
         
         self.is_running = True
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
-        logger.info(f"Trading bot avviato per {self.symbol} - Strategia: {self.strategy.upper()}")
+        logger.info(f"Bot Bybit avviato per {self.symbol} - Strategia: {self.strategy.upper()} (Demo: {self.is_testnet})")
 
     def stop(self):
         self.is_running = False
-        logger.info("Trading bot arrestato.")
+        logger.info("Bot Bybit arrestato.")
 
     def get_status(self) -> Dict[str, Any]:
         avg_price = (self.total_spent_usdt / self.accumulated_base) if self.accumulated_base > 0 else 0.0
         return {
             "is_running": self.is_running,
+            "exchange": "Bybit",
             "symbol": self.symbol,
             "strategy": self.strategy,
             "current_price": self.last_price,
@@ -99,6 +108,7 @@ class BinanceTradingBot:
             "take_profit_pct": self.take_profit_pct,
             "dip_buy_pct": self.dip_buy_pct,
             "is_testnet": self.is_testnet,
+            "account_mode": "DEMO (Testnet)" if self.is_testnet else "REALE (Mainnet)",
         }
 
     def get_balances(self) -> List[Dict[str, Any]]:
@@ -118,7 +128,7 @@ class BinanceTradingBot:
                     })
             return results
         except Exception as e:
-            logger.error(f"Errore recupero bilanci: {e}")
+            logger.error(f"Errore recupero saldi Bybit: {e}")
             return []
 
     def _run_loop(self):

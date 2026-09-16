@@ -3,9 +3,10 @@ from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from trading_bot import BinanceTradingBot
+import requests
+from trading_bot import UniversalTradingBot
 
-app = FastAPI(title="Binance 24/7 Cloud Trading Bot API", version="1.0.0")
+app = FastAPI(title="Bybit & Crypto 24/7 Cloud Trading Bot API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,15 +17,15 @@ app.add_middleware(
 )
 
 SERVER_API_KEY = os.getenv("SERVER_SECRET_KEY", "binance_secret_token_1234")
-bot = BinanceTradingBot()
+bot = UniversalTradingBot()
 
 # Caricamento iniziale se fornite via env
-INITIAL_BINANCE_KEY = os.getenv("BINANCE_API_KEY")
-INITIAL_BINANCE_SECRET = os.getenv("BINANCE_SECRET_KEY")
-IS_TESTNET = os.getenv("BINANCE_TESTNET", "false").lower() == "true"
+INITIAL_KEY = os.getenv("BYBIT_API_KEY") or os.getenv("BINANCE_API_KEY")
+INITIAL_SECRET = os.getenv("BYBIT_SECRET_KEY") or os.getenv("BINANCE_SECRET_KEY")
+IS_TESTNET = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
 
-if INITIAL_BINANCE_KEY and INITIAL_BINANCE_SECRET:
-    bot.configure(INITIAL_BINANCE_KEY, INITIAL_BINANCE_SECRET, is_testnet=IS_TESTNET)
+if INITIAL_KEY and INITIAL_SECRET:
+    bot.configure(INITIAL_KEY, INITIAL_SECRET, is_testnet=IS_TESTNET)
 
 def verify_token(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -37,7 +38,7 @@ def verify_token(authorization: Optional[str] = Header(None)):
 class ConfigRequest(BaseModel):
     api_key: Optional[str] = None
     secret_key: Optional[str] = None
-    is_testnet: Optional[bool] = False
+    is_testnet: Optional[bool] = True
     symbol: Optional[str] = "BTC/USDT"
     strategy: Optional[str] = "dca"
     amount_usdt: Optional[float] = 25.0
@@ -47,14 +48,13 @@ class ConfigRequest(BaseModel):
     grid_upper: Optional[float] = 70000.0
     grid_levels: Optional[int] = 5
 
-import requests
-
 @app.get("/")
 def home():
     return {
-        "service": "Binance 24/7 Cloud Bot",
+        "service": "24/7 Cloud Trading Bot (Bybit & Demo Ready)",
         "status": "online",
-        "bot_active": bot.is_running
+        "bot_active": bot.is_running,
+        "mode": "DEMO / TESTNET" if bot.is_testnet else "REAL / MAINNET"
     }
 
 @app.get("/api/my-ip")
@@ -62,10 +62,9 @@ def get_my_ip():
     try:
         res = requests.get("https://api.ipify.org?format=json", timeout=5)
         ip = res.json().get("ip", "unknown")
-        return {"outbound_ip": ip, "binance_instruction": "Copia questo IP e incollalo nelle restrizioni IP di Binance"}
+        return {"outbound_ip": ip}
     except Exception as e:
         return {"error": str(e)}
-
 
 @app.get("/api/status", dependencies=[Depends(verify_token)])
 def get_status():
