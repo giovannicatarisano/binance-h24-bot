@@ -31,6 +31,7 @@ class UniversalTradingBot:
         self.last_price = 0.0
         self.last_buy_price: Optional[float] = None
         self.accumulated_base = 0.0
+        self.total_spent_usdt = 0.0
         self.trade_history: List[Dict[str, Any]] = []
         self.system_logs: List[str] = []
 
