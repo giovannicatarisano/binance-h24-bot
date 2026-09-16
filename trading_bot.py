@@ -42,10 +42,15 @@ class UniversalTradingBot:
         if len(self.system_logs) > 50:
             self.system_logs.pop()
 
-    def configure(self, api_key: str, secret_key: str, is_testnet: bool = True):
+    def configure(self, api_key: str, secret_key: str, is_testnet: bool = False):
+        was_running = self.is_running
+        if self.is_running:
+            self.stop()
+            time.sleep(1)
+
         self.is_testnet = is_testnet
         
-        # Inizializzazione Bybit con supporto Demo (Testnet) e Reale (Mainnet)
+        # Inizializzazione Bybit V5 con supporto Reale e Testnet
         exchange_config = {
             'apiKey': api_key.strip(),
             'secret': secret_key.strip(),
@@ -60,7 +65,10 @@ class UniversalTradingBot:
         if is_testnet:
             self.exchange.set_sandbox_mode(True)
             
-        logger.info(f"Exchange Bybit configurato (Demo/Testnet: {is_testnet})")
+        self._log(f"Exchange Bybit riconfigurato con successo (Reale: {not is_testnet})")
+        
+        if was_running:
+            self.start()
 
     def update_params(self, params: Dict[str, Any]):
         if 'symbol' in params:
