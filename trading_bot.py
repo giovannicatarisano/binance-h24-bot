@@ -50,7 +50,7 @@ class UniversalTradingBot:
 
         self.is_testnet = is_testnet
         
-        # Inizializzazione Bybit V5 con supporto Reale e Testnet
+        # Inizializzazione Bybit V5 con supporto specifico Bybit EU e Testnet
         exchange_config = {
             'apiKey': api_key.strip(),
             'secret': secret_key.strip(),
@@ -58,14 +58,27 @@ class UniversalTradingBot:
             'options': {
                 'defaultType': 'spot',
                 'adjustForTimeDifference': True,
+            },
+            'urls': {
+                'api': {
+                    'spot': 'https://api-testnet.bybit.eu' if is_testnet else 'https://api.bybit.eu',
+                    'public': 'https://api-testnet.bybit.eu' if is_testnet else 'https://api.bybit.eu',
+                    'private': 'https://api-testnet.bybit.eu' if is_testnet else 'https://api.bybit.eu',
+                    'v5': 'https://api-testnet.bybit.eu/v5' if is_testnet else 'https://api.bybit.eu/v5',
+                }
             }
         }
         
         self.exchange = ccxt.bybit(exchange_config)
         if is_testnet:
             self.exchange.set_sandbox_mode(True)
+            # Assicura che gli endpoint v5 puntino a bybit.eu o testnet
+            self.exchange.urls['api']['v5'] = 'https://api-testnet.bybit.eu/v5'
+            self.exchange.urls['api']['spot'] = 'https://api-testnet.bybit.eu'
+            self.exchange.urls['api']['public'] = 'https://api-testnet.bybit.eu'
+            self.exchange.urls['api']['private'] = 'https://api-testnet.bybit.eu'
             
-        self._log(f"Exchange Bybit riconfigurato con successo (Reale: {not is_testnet})")
+        self._log(f"Exchange Bybit EU configurato con successo (Testnet: {is_testnet})")
         
         if was_running:
             self.start()
