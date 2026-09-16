@@ -38,7 +38,7 @@ def verify_token(authorization: Optional[str] = Header(None)):
 class ConfigRequest(BaseModel):
     api_key: Optional[str] = None
     secret_key: Optional[str] = None
-    is_testnet: Optional[bool] = True
+    is_testnet: Optional[bool] = False
     symbol: Optional[str] = "BTC/USDT"
     strategy: Optional[str] = "dca"
     amount_usdt: Optional[float] = 25.0
