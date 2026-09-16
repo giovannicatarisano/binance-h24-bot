@@ -161,12 +161,27 @@ class UniversalTradingBot:
             return []
 
     def _run_loop(self):
-        self._log(f"Loop di trading avviato per {self.symbol}...")
+        self._log(f"Caricamento mercati Bybit EU...")
+        try:
+            self.exchange.load_markets()
+            self._log(f"Mercati caricati ({len(self.exchange.markets)} coppie disponibili).")
+        except Exception as e:
+            self._log(f"Avviso load_markets: {e}")
+
+        # Verifica formato simbolo corretto
+        symbol_to_use = self.symbol
+        if symbol_to_use not in self.exchange.markets:
+            if symbol_to_use.replace('/', '') in self.exchange.markets:
+                symbol_to_use = symbol_to_use.replace('/', '')
+            elif f"{symbol_to_use}:USDT" in self.exchange.markets:
+                symbol_to_use = f"{symbol_to_use}:USDT"
+
+        self._log(f"Loop di trading avviato per {symbol_to_use}...")
         while self.is_running:
             try:
-                ticker = self.exchange.fetch_ticker(self.symbol)
+                ticker = self.exchange.fetch_ticker(symbol_to_use)
                 self.last_price = float(ticker['last'])
-                self._log(f"Ticker {self.symbol}: {self.last_price}")
+                self._log(f"Prezzo {symbol_to_use}: ${self.last_price}")
 
                 if self.strategy == "dca":
                     self._evaluate_dca(self.last_price)
